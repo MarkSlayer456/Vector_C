@@ -60,13 +60,6 @@ void vector_remove_index(Vector *vec, int index) {
 	}
 }
 
-// returns the next Vector if it's an array of vectors
-// otherwise returns the values pointer which you probably should
-// have access to
-void *vector_next(Vector *vec) {
-	return vec->values; 
-}
-
 void *vector_get(Vector *vec, int index) {
 	return vec->values[index];
 }
