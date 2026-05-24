@@ -34,7 +34,8 @@ int vector_add(Vector *vec, void *item) {
 	}
 	memcpy(vec->values[vec->count++], item, vec->item_size);
 }
-// removes first occurance of value stored in *item
+
+// removes first occurance of *item stored in *vec
 void vector_remove(Vector *vec, void *item) {
 	for(int i = 0; i < vec->count; i++) {
 		if(memcmp(vec->values[i], item, vec->item_size) == 0) {
@@ -59,16 +60,55 @@ void vector_remove_index(Vector *vec, int index) {
 	}
 }
 
+// returns the next Vector if it's an array of vectors
+// otherwise returns the values pointer which you probably should
+// have access to
+void *vector_next(Vector *vec) {
+	return vec->values; 
+}
+
 void *vector_get(Vector *vec, int index) {
 	return vec->values[index];
+}
+
+void *vector_get2d(Vector *vec, int x, int y) {
+	return vector_get(vector_get(vec, x), y);
+}
+
+void *vector_get3d(Vector *vec, int x, int y, int z) {
+	return vector_get(vector_get(vector_get(vec, x), y), z);
 }
 
 void vector_replace(Vector *vec, int index, void *value) {
 	for(int i = 0; i < vec->count; i++) {
 		if(i == index) {
-			vec->values[i] = value;
+			memcpy(vec->values[i], value, vec->item_size);
 		}
 	}
 }
 
+void vector_replace2d(Vector *vec, int x, int y, void *value) {
+	for(int i = 0; i < vec->count; i++) {
+		Vector *vecy = (Vector *)vector_get(vec, i);
+		for(int j = 0; j < vecy->count; j++) {
+			if(i == x && j == y) {
+				memcpy(vector_get2d(vec, x, y), value, vec->item_size);
+			}
+		}
+	}
+}
+
+void vector_replace3d(Vector *vec, int x, int y, int z, void *value) {
+	for(int i = 0; i < vec->count; i++) {
+		Vector *vecy = (Vector *)vector_get(vec, i);
+		for(int j = 0; j < vecy->count; j++) {
+			Vector *vecz = (Vector *)vector_get(vecy, j);
+			for(int k = 0; k < vecy->count; k++) {
+				if(i == x && j == y && k == z) {
+					memcpy(vector_get3d(vecz, x, y, z), value, vec->item_size);
+				}
+			}
+		}
+	}
+}
 #endif
