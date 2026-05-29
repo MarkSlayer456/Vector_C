@@ -28,7 +28,7 @@ int vector_add(Vector *vec, void *item) {
 	if(vec->count+1 >= vec->capacity) {
 		vec->capacity *= 2;
 		vec->values = realloc(vec->values, vec->capacity*sizeof(void *));
-		for(int i = vec->count; i < vec->capacity; i++) {
+		for(int i = vec->count+1; i < vec->capacity; i++) {
 			vec->values[i] = calloc(1, vec->item_size);
 		}
 	}
@@ -40,7 +40,7 @@ void vector_remove(Vector *vec, void *item) {
 	for(int i = 0; i < vec->count; i++) {
 		if(memcmp(vec->values[i], item, vec->item_size) == 0) {
 			for(int j = i; j < vec->count-1; j++) {
-				vec->values[j] = vec->values[j+1];
+				memcpy(vec->values[j], vec->values[j+1], vec->item_size);
 			}
 			vec->count--;
 			break;
@@ -52,7 +52,7 @@ void vector_remove_index(Vector *vec, int index) {
 	for(int i = 0; i < vec->count; i++) {
 		if(i == index) {
 			for(int j = i; j < vec->count-1; j++) {
-				vec->values[j] = vec->values[j+1];
+				memcpy(vec->values[j], vec->values[j+1], vec->item_size);
 			}
 			vec->count--;
 			break;
@@ -85,7 +85,7 @@ void vector_replace2d(Vector *vec, int x, int y, void *value) {
 		Vector *vecy = (Vector *)vector_get(vec, i);
 		for(int j = 0; j < vecy->count; j++) {
 			if(i == x && j == y) {
-				memcpy(vector_get2d(vec, x, y), value, vec->item_size);
+				memcpy(vector_get2d(vec, x, y), value, vecy->item_size);
 			}
 		}
 	}
@@ -98,10 +98,49 @@ void vector_replace3d(Vector *vec, int x, int y, int z, void *value) {
 			Vector *vecz = (Vector *)vector_get(vecy, j);
 			for(int k = 0; k < vecy->count; k++) {
 				if(i == x && j == y && k == z) {
-					memcpy(vector_get3d(vecz, x, y, z), value, vec->item_size);
+					memcpy(vector_get3d(vec, x, y, z), value, vecz->item_size);
 				}
 			}
 		}
 	}
+}
+
+void vector_free(Vector *vec) {
+	for(int i = 0; i < vec->capacity; i++) {
+		free(vec->values[i]);
+	}
+	free(vec->values);
+	free(vec);
+}
+
+void vector2d_free(Vector *vec) {
+	for(int x = 0; x < vec->capacity; x++) {
+		Vector *vecy = (Vector *)vector_get(vec, x);
+		for(int y = 0; y < vecy->capacity; y++) {
+			free(vecy->values[y]);
+		}
+		free(vecy->values);
+		free(vecy);
+	}
+	free(vec->values);
+	free(vec);
+}
+
+void vector3d_free(Vector *vec) {
+	for(int x = 0; x < vec->capacity; x++) {
+		Vector *vecy = (Vector *)vector_get(vec, x);
+		for(int y = 0; y < vecy->capacity; y++) {
+			Vector *vecz = (Vector *)vector_get(vecy, y);
+			for(int z = 0; z < vecz->capacity; z++) {
+				free(vecz->values[z]);
+			}
+			free(vecz->values);
+			free(vecz);
+		}
+		free(vecy->values);
+		free(vecy);
+	}
+	free(vec->values);
+	free(vec);
 }
 #endif

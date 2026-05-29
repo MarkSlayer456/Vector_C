@@ -21,6 +21,7 @@ int main() {
 		free(row);
 	}
 
+	printf("%d\n", *(int *)vector_get(vector_get(map, 9), 1));
 	int replace = 5;
 	vector_replace2d(map, 3, 3, &replace);
 	for(int x = 0; x < 10; x++) {
@@ -43,5 +44,6 @@ int main() {
 	vector_remove(vec, &b);
 	vector_add(vec, &b);
 	vector_print(vec);
-
+	vector_free(vec);
+	vector2d_free(map);
 }
