@@ -3,12 +3,13 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 typedef struct vector {
 	int count;
 	size_t item_size;
-	int capacity; 
-	void **values;
+	int capacity;
+	void *values;
 } Vector;
 
 Vector *vector_new(size_t size) {
@@ -17,30 +18,30 @@ Vector *vector_new(size_t size) {
 	vector->capacity = default_length;
 	vector->count = 0;
 	vector->item_size = size;
-	vector->values = calloc(default_length, sizeof(void *));
-	for(int i = 0; i < default_length; i++) {
-		vector->values[i] = calloc(1, vector->item_size);
-	}
+	vector->values = calloc(default_length, vector->item_size);
 	return vector;
+}
+
+void *vector_get(Vector *vec, int index) {
+	return (unsigned char *)vec->values+(index*vec->item_size);
 }
 
 int vector_add(Vector *vec, void *item) {
 	if(vec->count+1 >= vec->capacity) {
 		vec->capacity *= 2;
-		vec->values = realloc(vec->values, vec->capacity*sizeof(void *));
-		for(int i = vec->count+1; i < vec->capacity; i++) {
-			vec->values[i] = calloc(1, vec->item_size);
-		}
+		printf("vector new cap: %d\n", vec->capacity);
+		vec->values = realloc(vec->values, vec->capacity*vec->item_size);
 	}
-	memcpy(vec->values[vec->count++], item, vec->item_size);
+	memcpy((unsigned char *)vec->values+(vec->count*vec->item_size), item, vec->item_size);
+	vec->count++;
 }
 
 // removes first occurance of *item stored in *vec
 void vector_remove(Vector *vec, void *item) {
 	for(int i = 0; i < vec->count; i++) {
-		if(memcmp(vec->values[i], item, vec->item_size) == 0) {
+		if(memcmp(vector_get(vec, i), item, vec->item_size) == 0) {
 			for(int j = i; j < vec->count-1; j++) {
-				memcpy(vec->values[j], vec->values[j+1], vec->item_size);
+				memcpy(vector_get(vec, j), vector_get(vec, j+1), vec->item_size);
 			}
 			vec->count--;
 			break;
@@ -52,7 +53,7 @@ void vector_remove_index(Vector *vec, int index) {
 	for(int i = 0; i < vec->count; i++) {
 		if(i == index) {
 			for(int j = i; j < vec->count-1; j++) {
-				memcpy(vec->values[j], vec->values[j+1], vec->item_size);
+				memcpy(vector_get(vec, j), vector_get(vec, j+1), vec->item_size);
 			}
 			vec->count--;
 			break;
@@ -60,85 +61,66 @@ void vector_remove_index(Vector *vec, int index) {
 	}
 }
 
-void *vector_get(Vector *vec, int index) {
-	return vec->values[index];
-}
-
 void *vector_get2d(Vector *vec, int x, int y) {
-	return vector_get(vector_get(vec, x), y);
+	Vector *vecy = *(Vector **) vector_get(vec, x);
+	unsigned char *data = (unsigned char *) vector_get(vecy, y);
+	return data;
 }
 
 void *vector_get3d(Vector *vec, int x, int y, int z) {
-	return vector_get(vector_get(vector_get(vec, x), y), z);
+	Vector *vecy = *(Vector **) vector_get(vec, x);
+	Vector *vecz = *(Vector **) vector_get(vecy, y);
+	unsigned char *data = (unsigned char *) vector_get(vecz, z);
+	return data;
 }
 
 void vector_replace(Vector *vec, int index, void *value) {
-	for(int i = 0; i < vec->count; i++) {
-		if(i == index) {
-			memcpy(vec->values[i], value, vec->item_size);
-		}
-	}
+	unsigned char *data = (unsigned char *) vec->values;
+	memcpy(data+(index*vec->item_size), value, vec->item_size);
 }
 
 void vector_replace2d(Vector *vec, int x, int y, void *value) {
-	for(int i = 0; i < vec->count; i++) {
-		Vector *vecy = (Vector *)vector_get(vec, i);
-		for(int j = 0; j < vecy->count; j++) {
-			if(i == x && j == y) {
-				memcpy(vector_get2d(vec, x, y), value, vecy->item_size);
-			}
-		}
-	}
+	Vector *row = *(Vector **)vector_get(vec, x);
+	unsigned char *data = (unsigned char *) row->values;
+	memcpy(data+(y*row->item_size), value, row->item_size);
 }
 
 void vector_replace3d(Vector *vec, int x, int y, int z, void *value) {
-	for(int i = 0; i < vec->count; i++) {
-		Vector *vecy = (Vector *)vector_get(vec, i);
-		for(int j = 0; j < vecy->count; j++) {
-			Vector *vecz = (Vector *)vector_get(vecy, j);
-			for(int k = 0; k < vecy->count; k++) {
-				if(i == x && j == y && k == z) {
-					memcpy(vector_get3d(vec, x, y, z), value, vecz->item_size);
-				}
-			}
-		}
-	}
+	Vector *row = *(Vector **)vector_get(vec, x);
+	Vector *col = *(Vector **)vector_get(row, y);
+	unsigned char *data = (unsigned char *) col->values;
+	memcpy(data+(z*row->item_size), value, row->item_size);
 }
 
 void vector_free(Vector *vec) {
-	for(int i = 0; i < vec->capacity; i++) {
-		free(vec->values[i]);
-	}
 	free(vec->values);
 	free(vec);
 }
 
 void vector2d_free(Vector *vec) {
-	for(int x = 0; x < vec->capacity; x++) {
-		Vector *vecy = (Vector *)vector_get(vec, x);
-		for(int y = 0; y < vecy->capacity; y++) {
-			free(vecy->values[y]);
-		}
-		free(vecy->values);
-		free(vecy);
+	Vector **rows = (Vector **)vec->values;
+
+	for(int i = 0; i < vec->count; i++) {
+		Vector *row = rows[i];
+		free(row->values);
+		free(row);
 	}
 	free(vec->values);
 	free(vec);
 }
 
 void vector3d_free(Vector *vec) {
-	for(int x = 0; x < vec->capacity; x++) {
-		Vector *vecy = (Vector *)vector_get(vec, x);
-		for(int y = 0; y < vecy->capacity; y++) {
-			Vector *vecz = (Vector *)vector_get(vecy, y);
-			for(int z = 0; z < vecz->capacity; z++) {
-				free(vecz->values[z]);
-			}
-			free(vecz->values);
-			free(vecz);
+	Vector **rows = (Vector **)vec->values;
+
+	for(int i = 0; i < vec->count; i++) {
+		Vector *row = rows[i];
+		for(int j = 0; j < row->count; j++) {
+			Vector *col = (Vector *)row->values;
+			free(col->values);
+			free(col);
 		}
-		free(vecy->values);
-		free(vecy);
+		free(row->values);
+		free(row);
 	}
 	free(vec->values);
 	free(vec);
