@@ -29,10 +29,13 @@ void *vector_get(Vector *vec, int index) {
 int vector_add(Vector *vec, void *item) {
 	if(vec->count+1 >= vec->capacity) {
 		vec->capacity *= 2;
-		printf("vector new cap: %d\n", vec->capacity);
 		vec->values = realloc(vec->values, vec->capacity*vec->item_size);
 	}
-	memcpy((unsigned char *)vec->values+(vec->count*vec->item_size), item, vec->item_size);
+	if(item != NULL) {
+		memcpy((unsigned char *)vec->values+(vec->count*vec->item_size), item, vec->item_size);
+	} else {
+		memset((unsigned char *)vec->values+(vec->count*vec->item_size), 0, vec->item_size);
+	}
 	vec->count++;
 }
 
